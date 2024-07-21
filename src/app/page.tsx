@@ -10,7 +10,6 @@ interface Note {
   id: string;
   content: string;
   isFavorite: boolean;
-  isTrashed: boolean;
 }
 
 type Category = "all" | "favorites" | "trash";
@@ -20,18 +19,6 @@ const Home: React.FC = () => {
   const [currentNoteIndex, setCurrentNoteIndex] = useState<number>(0);
   const [selectedCategory, setSelectedCategory] = useState<Category>("all");
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isMarkdownView, setIsMarkdownView] = useState(false);
-
-  const deleteNote = () => {
-    setNotes((prevNotes) =>
-      prevNotes.map((note, index) =>
-        index === currentNoteIndex ? { ...note, isTrashed: true } : note
-      )
-    );
-    setCurrentNoteIndex((prevIndex) =>
-      Math.min(prevIndex, notes.filter((note) => !note.isTrashed).length - 1)
-    );
-  };
 
   useEffect(() => {
     const loadNotes = () => {
@@ -43,7 +30,6 @@ const Home: React.FC = () => {
           id: Date.now().toString(),
           content: "Welcome to your notes app!",
           isFavorite: false,
-          isTrashed: false,
         };
         setNotes([defaultNote]);
       }
@@ -64,7 +50,6 @@ const Home: React.FC = () => {
       id: Date.now().toString(),
       content: "",
       isFavorite: false,
-      isTrashed: false,
     };
     setNotes((prevNotes) => [...prevNotes, newNote]);
     setCurrentNoteIndex(notes.length);
@@ -89,28 +74,15 @@ const Home: React.FC = () => {
     );
   };
 
-  const toggleMarkdownView = () => {
-    setIsMarkdownView(!isMarkdownView);
-  };
-
   const getTitle = (content: string) => {
     const firstLine = content.split("\n")[0].trim();
-    const plainTitle = firstLine.replace(/^#+\s*/, "");
-    return plainTitle || "Untitled Note";
+    return firstLine || "Untitled Note";
   };
 
   const filteredNotes =
     selectedCategory === "favorites"
-      ? notes.filter((note) => note.isFavorite && !note.isTrashed)
-      : selectedCategory === "trash"
-      ? notes.filter((note) => note.isTrashed)
-      : notes.filter((note) => !note.isTrashed);
-
-  useEffect(() => {
-    if (filteredNotes.length > 0) {
-      setCurrentNoteIndex(0);
-    }
-  }, [selectedCategory, filteredNotes.length]);
+      ? notes.filter((note) => note.isFavorite)
+      : notes;
 
   if (!isLoaded) {
     return <div>Loading...</div>;
@@ -130,27 +102,14 @@ const Home: React.FC = () => {
             selectNote={setCurrentNoteIndex}
             getTitle={getTitle}
           />
-          {filteredNotes.length > 0 ? (
-            <NoteEditor
-              note={filteredNotes[currentNoteIndex]}
-              onChange={updateNote}
-              isMarkdownView={isMarkdownView}
-            />
-          ) : (
-            <div className="flex-1 p-6 bg-white flex flex-col h-full">
-              <p>No notes available</p>
-            </div>
+          {notes.length > 0 && (
+            <NoteEditor note={notes[currentNoteIndex]} onChange={updateNote} />
           )}
         </div>
-        {filteredNotes.length > 0 && (
-          <BottomBar
-            isFavorite={filteredNotes[currentNoteIndex]?.isFavorite || false}
-            onToggleFavorite={toggleFavorite}
-            onDeleteNote={deleteNote}
-            isMarkdownView={isMarkdownView}
-            onToggleMarkdownView={toggleMarkdownView}
-          />
-        )}
+        <BottomBar
+          isFavorite={notes[currentNoteIndex]?.isFavorite || false}
+          onToggleFavorite={toggleFavorite}
+        />
       </div>
     </div>
   );
