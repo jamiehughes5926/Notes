@@ -10,6 +10,7 @@ interface Note {
   id: string;
   content: string;
   isFavorite: boolean;
+  isDeleted?: boolean; // Add this property
 }
 
 type Category = "all" | "favorites" | "trash";
@@ -22,14 +23,13 @@ const Home: React.FC = () => {
   const [isMarkdownView, setIsMarkdownView] = useState(false);
 
   const deleteNote = () => {
-    if (notes.length > 1) {
-      const newNotes = notes.filter((_, index) => index !== currentNoteIndex);
-      setNotes(newNotes);
-      setCurrentNoteIndex(Math.min(currentNoteIndex, newNotes.length - 1));
-    } else {
-      // If it's the last note, clear its content instead of deleting
-      setNotes([{ id: Date.now().toString(), content: "", isFavorite: false }]);
-    }
+    setNotes((prevNotes) =>
+      prevNotes.map((note, index) =>
+        index === currentNoteIndex ? { ...note, isDeleted: true } : note
+      )
+    );
+    setCurrentNoteIndex(Math.max(currentNoteIndex - 1, 0));
+    setIsMarkdownView(false); // Switch to edit mode when deleting a note
   };
 
   useEffect(() => {
@@ -66,6 +66,7 @@ const Home: React.FC = () => {
     setNotes((prevNotes) => [...prevNotes, newNote]);
     setCurrentNoteIndex(notes.length);
     setSelectedCategory("all");
+    setIsMarkdownView(false); // Ensure new notes open in edit mode
   };
 
   const updateNote = (value: string) => {
@@ -95,10 +96,19 @@ const Home: React.FC = () => {
     return firstLine || "Untitled Note";
   };
 
-  const filteredNotes =
-    selectedCategory === "favorites"
-      ? notes.filter((note) => note.isFavorite)
-      : notes;
+  const selectNote = (index: number) => {
+    setCurrentNoteIndex(index);
+    setIsMarkdownView(false); // Switch to edit mode when selecting a note
+  };
+
+  const filteredNotes = notes.filter((note) => {
+    if (selectedCategory === "favorites") {
+      return note.isFavorite && !note.isDeleted;
+    } else if (selectedCategory === "trash") {
+      return note.isDeleted;
+    }
+    return !note.isDeleted;
+  });
 
   if (!isLoaded) {
     return <div>Loading...</div>;
@@ -115,7 +125,7 @@ const Home: React.FC = () => {
         <div className="flex flex-1 overflow-hidden">
           <Sidebar
             notes={filteredNotes}
-            selectNote={setCurrentNoteIndex}
+            selectNote={selectNote}
             getTitle={getTitle}
           />
           {notes.length > 0 && (
