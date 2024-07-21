@@ -19,6 +19,18 @@ const Home: React.FC = () => {
   const [currentNoteIndex, setCurrentNoteIndex] = useState<number>(0);
   const [selectedCategory, setSelectedCategory] = useState<Category>("all");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isMarkdownView, setIsMarkdownView] = useState(false);
+
+  const deleteNote = () => {
+    if (notes.length > 1) {
+      const newNotes = notes.filter((_, index) => index !== currentNoteIndex);
+      setNotes(newNotes);
+      setCurrentNoteIndex(Math.min(currentNoteIndex, newNotes.length - 1));
+    } else {
+      // If it's the last note, clear its content instead of deleting
+      setNotes([{ id: Date.now().toString(), content: "", isFavorite: false }]);
+    }
+  };
 
   useEffect(() => {
     const loadNotes = () => {
@@ -74,6 +86,10 @@ const Home: React.FC = () => {
     );
   };
 
+  const toggleMarkdownView = () => {
+    setIsMarkdownView(!isMarkdownView);
+  };
+
   const getTitle = (content: string) => {
     const firstLine = content.split("\n")[0].trim();
     return firstLine || "Untitled Note";
@@ -103,12 +119,19 @@ const Home: React.FC = () => {
             getTitle={getTitle}
           />
           {notes.length > 0 && (
-            <NoteEditor note={notes[currentNoteIndex]} onChange={updateNote} />
+            <NoteEditor
+              note={notes[currentNoteIndex]}
+              onChange={updateNote}
+              isMarkdownView={isMarkdownView}
+            />
           )}
         </div>
         <BottomBar
           isFavorite={notes[currentNoteIndex]?.isFavorite || false}
           onToggleFavorite={toggleFavorite}
+          onDeleteNote={deleteNote}
+          isMarkdownView={isMarkdownView}
+          onToggleMarkdownView={toggleMarkdownView}
         />
       </div>
     </div>
