@@ -10,25 +10,25 @@ interface Note {
   id: string;
   content: string;
   isFavorite: boolean;
-  isDeleted?: boolean; // Add this property
+  isDeleted?: boolean;
 }
 
 type Category = "all" | "favorites" | "trash";
 
 const Home: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [currentNoteIndex, setCurrentNoteIndex] = useState<number>(0);
+  const [currentNoteId, setCurrentNoteId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category>("all");
   const [isLoaded, setIsLoaded] = useState(false);
   const [isMarkdownView, setIsMarkdownView] = useState(false);
 
   const deleteNote = () => {
     setNotes((prevNotes) =>
-      prevNotes.map((note, index) =>
-        index === currentNoteIndex ? { ...note, isDeleted: true } : note
+      prevNotes.map((note) =>
+        note.id === currentNoteId ? { ...note, isDeleted: true } : note
       )
     );
-    setCurrentNoteIndex(Math.max(currentNoteIndex - 1, 0));
+    setCurrentNoteId(null);
     setIsMarkdownView(false); // Switch to edit mode when deleting a note
   };
 
@@ -64,23 +64,23 @@ const Home: React.FC = () => {
       isFavorite: false,
     };
     setNotes((prevNotes) => [...prevNotes, newNote]);
-    setCurrentNoteIndex(notes.length);
+    setCurrentNoteId(newNote.id);
     setSelectedCategory("all");
     setIsMarkdownView(false); // Ensure new notes open in edit mode
   };
 
   const updateNote = (value: string) => {
     setNotes((prevNotes) =>
-      prevNotes.map((note, index) =>
-        index === currentNoteIndex ? { ...note, content: value } : note
+      prevNotes.map((note) =>
+        note.id === currentNoteId ? { ...note, content: value } : note
       )
     );
   };
 
   const toggleFavorite = () => {
     setNotes((prevNotes) =>
-      prevNotes.map((note, index) =>
-        index === currentNoteIndex
+      prevNotes.map((note) =>
+        note.id === currentNoteId
           ? { ...note, isFavorite: !note.isFavorite }
           : note
       )
@@ -96,8 +96,8 @@ const Home: React.FC = () => {
     return firstLine || "Untitled Note";
   };
 
-  const selectNote = (index: number) => {
-    setCurrentNoteIndex(index);
+  const selectNote = (id: string) => {
+    setCurrentNoteId(id);
     setIsMarkdownView(false); // Switch to edit mode when selecting a note
   };
 
@@ -110,6 +110,9 @@ const Home: React.FC = () => {
     return !note.isDeleted;
   });
 
+  const currentNote =
+    notes.find((note) => note.id === currentNoteId) || filteredNotes[0];
+
   if (!isLoaded) {
     return <div>Loading...</div>;
   }
@@ -120,6 +123,9 @@ const Home: React.FC = () => {
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
         addNewNote={addNewNote}
+        notes={notes}
+        selectNote={selectNote}
+        getTitle={getTitle}
       />
       <div className="flex flex-col flex-1">
         <div className="flex flex-1 overflow-hidden">
@@ -128,21 +134,23 @@ const Home: React.FC = () => {
             selectNote={selectNote}
             getTitle={getTitle}
           />
-          {notes.length > 0 && (
+          {currentNote && (
             <NoteEditor
-              note={notes[currentNoteIndex]}
+              note={currentNote}
               onChange={updateNote}
               isMarkdownView={isMarkdownView}
             />
           )}
         </div>
-        <BottomBar
-          isFavorite={notes[currentNoteIndex]?.isFavorite || false}
-          onToggleFavorite={toggleFavorite}
-          onDeleteNote={deleteNote}
-          isMarkdownView={isMarkdownView}
-          onToggleMarkdownView={toggleMarkdownView}
-        />
+        {currentNote && (
+          <BottomBar
+            isFavorite={currentNote.isFavorite}
+            onToggleFavorite={toggleFavorite}
+            onDeleteNote={deleteNote}
+            isMarkdownView={isMarkdownView}
+            onToggleMarkdownView={toggleMarkdownView}
+          />
+        )}
       </div>
     </div>
   );

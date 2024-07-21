@@ -30,10 +30,6 @@ li {
   border-bottom: 1px solid #ccc;
 }
 
-li:hover {
-  background-color: #f0f0f0;
-}
-
 /* Markdown preview styles */
 .prose {
   max-width: none; /* Override default max-width */
