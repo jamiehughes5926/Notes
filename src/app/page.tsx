@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import CategoriesSidebar from "./components/CategoriesSidebar";
-import Sidebar from "./components/Sidebar";
 import NoteEditor from "./components/NoteEditor";
 import BottomBar from "./components/BottomBar";
 
@@ -11,9 +10,10 @@ interface Note {
   content: string;
   isFavorite: boolean;
   isDeleted?: boolean;
+  category?: string;
 }
 
-type Category = "all" | "favorites" | "trash";
+type Category = "all" | "favorites" | "trash" | string;
 
 const Home: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -21,15 +21,32 @@ const Home: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category>("all");
   const [isLoaded, setIsLoaded] = useState(false);
   const [isMarkdownView, setIsMarkdownView] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
 
   const deleteNote = () => {
-    setNotes((prevNotes) =>
-      prevNotes.map((note) =>
-        note.id === currentNoteId ? { ...note, isDeleted: true } : note
-      )
-    );
+    if (!currentNoteId) return;
+
+    const currentNote = notes.find((note) => note.id === currentNoteId);
+    if (!currentNote) return;
+
+    if (currentNote.isDeleted) {
+      // Permanent deletion
+      setNotes((prevNotes) =>
+        prevNotes.filter((note) => note.id !== currentNoteId)
+      );
+    } else {
+      // Move to trash
+      setNotes((prevNotes) =>
+        prevNotes.map((note) =>
+          note.id === currentNoteId
+            ? { ...note, isDeleted: true, category: undefined }
+            : note
+        )
+      );
+    }
     setCurrentNoteId(null);
-    setIsMarkdownView(false); // Switch to edit mode when deleting a note
+    setIsMarkdownView(false);
   };
 
   useEffect(() => {
@@ -48,7 +65,15 @@ const Home: React.FC = () => {
       setIsLoaded(true);
     };
 
+    const loadCustomCategories = () => {
+      const savedCategories = localStorage.getItem("customCategories");
+      if (savedCategories) {
+        setCustomCategories(JSON.parse(savedCategories));
+      }
+    };
+
     loadNotes();
+    loadCustomCategories();
   }, []);
 
   useEffect(() => {
@@ -57,16 +82,21 @@ const Home: React.FC = () => {
     }
   }, [notes, isLoaded]);
 
-  const addNewNote = () => {
+  useEffect(() => {
+    localStorage.setItem("customCategories", JSON.stringify(customCategories));
+  }, [customCategories]);
+
+  const addNewNote = (category?: string) => {
     const newNote: Note = {
       id: Date.now().toString(),
       content: "",
       isFavorite: false,
+      category: category || undefined,
     };
     setNotes((prevNotes) => [...prevNotes, newNote]);
     setCurrentNoteId(newNote.id);
-    setSelectedCategory("all");
-    setIsMarkdownView(false); // Ensure new notes open in edit mode
+    setSelectedCategory(category || "all");
+    setIsMarkdownView(false);
   };
 
   const updateNote = (value: string) => {
@@ -98,16 +128,38 @@ const Home: React.FC = () => {
 
   const selectNote = (id: string) => {
     setCurrentNoteId(id);
-    setIsMarkdownView(false); // Switch to edit mode when selecting a note
+    setIsMarkdownView(false);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleAddCategory = (name: string) => {
+    setCustomCategories((prevCategories) => [...prevCategories, name]);
+  };
+
+  const clearTrash = () => {
+    setNotes((prevNotes) => prevNotes.filter((note) => !note.isDeleted));
+    if (selectedCategory === "trash") {
+      setCurrentNoteId(null);
+    }
   };
 
   const filteredNotes = notes.filter((note) => {
+    const matchesSearch = note.content
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     if (selectedCategory === "favorites") {
-      return note.isFavorite && !note.isDeleted;
+      return note.isFavorite && !note.isDeleted && matchesSearch;
     } else if (selectedCategory === "trash") {
-      return note.isDeleted;
+      return note.isDeleted && matchesSearch;
+    } else if (customCategories.includes(selectedCategory)) {
+      return (
+        note.category === selectedCategory && !note.isDeleted && matchesSearch
+      );
     }
-    return !note.isDeleted;
+    return !note.isDeleted && matchesSearch;
   });
 
   const currentNote =
@@ -126,14 +178,14 @@ const Home: React.FC = () => {
         notes={notes}
         selectNote={selectNote}
         getTitle={getTitle}
+        onSearch={handleSearch}
+        customCategories={customCategories}
+        addCategory={handleAddCategory}
+        clearTrash={clearTrash}
       />
-      <div className="flex flex-col flex-1">
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar
-            notes={filteredNotes}
-            selectNote={selectNote}
-            getTitle={getTitle}
-          />
+
+      <div className="flex flex-col flex-1 h-full">
+        <div className="flex flex-1 overflow-hidden h-full">
           {currentNote && (
             <NoteEditor
               note={currentNote}
