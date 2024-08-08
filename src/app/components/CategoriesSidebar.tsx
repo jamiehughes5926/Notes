@@ -56,6 +56,18 @@ const CategoriesSidebar: React.FC<CategoriesSidebarProps> = ({
     setFilteredNotes(filtered);
   }, [searchQuery, notes]);
 
+  useEffect(() => {
+    setExpandedCategories((prev) => {
+      const newState = { ...prev };
+      customCategories.forEach((category) => {
+        if (!(category in newState)) {
+          newState[category] = false;
+        }
+      });
+      return newState;
+    });
+  }, [customCategories]);
+
   const toggleCategory = (category: Category) => {
     setExpandedCategories((prev) => ({
       ...prev,
@@ -93,57 +105,58 @@ const CategoriesSidebar: React.FC<CategoriesSidebarProps> = ({
     setShowClearTrashConfirm(false);
   };
 
-  const renderCategory = (category: Category, icon: string) => (
-    <li key={category}>
-      <div className="mb-2 p-2 rounded flex items-center">
-        {category !== "trash" && (
-          <button
-            className="mr-2 text-gray-400 hover:text-white focus:outline-none"
-            onClick={(e) => {
-              e.stopPropagation();
-              addNewNote(category === "all" ? undefined : category);
+  const renderNoteItem = (note: Note) => (
+    <li
+      key={note.id}
+      className="cursor-pointer p-2 mb-2 rounded bg-gray-800"
+      onClick={() => selectNote(note.id)}
+    >
+      {getTitle(note.content)}
+    </li>
+  );
+
+  const renderCategory = (category: Category, icon: string) => {
+    const categoryNotes = filteredNotes.filter((note) => {
+      if (category === "favorites") return note.isFavorite && !note.isDeleted;
+      if (category === "trash") return note.isDeleted;
+      if (category === "all") return !note.isDeleted;
+      return note.category === category && !note.isDeleted;
+    });
+
+    return (
+      <li key={category}>
+        <div className="mb-2 p-2 rounded flex items-center">
+          {category !== "trash" && (
+            <button
+              className="mr-2 text-gray-400 hover:text-white focus:outline-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                addNewNote(category === "all" ? undefined : category);
+              }}
+            >
+              +
+            </button>
+          )}
+          <div
+            className={`flex-grow flex items-center justify-between cursor-pointer ${
+              selectedCategory === category ? "bg-gray-700" : ""
+            }`}
+            onClick={() => {
+              onSelectCategory(category);
+              toggleCategory(category);
             }}
           >
-            +
-          </button>
-        )}
-        <div
-          className={`flex-grow flex items-center justify-between cursor-pointer ${
-            selectedCategory === category ? "bg-gray-700" : ""
-          }`}
-          onClick={() => {
-            onSelectCategory(category);
-            toggleCategory(category);
-          }}
-        >
-          <div className="flex items-center">
-            <span className="mr-2">{icon}</span>
-            {category.charAt(0).toUpperCase() + category.slice(1)}
+            <div className="flex items-center">
+              <span className="mr-2">{icon}</span>
+              {category.charAt(0).toUpperCase() + category.slice(1)}
+            </div>
+            <span className="ml-2">
+              {expandedCategories[category] ? "▼" : "▶"}
+            </span>
           </div>
-          <span className="ml-2">
-            {expandedCategories[category] ? "▼" : "▶"}
-          </span>
         </div>
-      </div>
-      {expandedCategories[category] && (
-        <ul className="ml-4">
-          {filteredNotes
-            .filter((note) => {
-              if (category === "favorites")
-                return note.isFavorite && !note.isDeleted;
-              if (category === "trash") return note.isDeleted;
-              if (category === "all") return !note.isDeleted;
-              return note.category === category && !note.isDeleted;
-            })
-            .map((note) => (
-              <li
-                key={note.id}
-                className="cursor-pointer p-2 mb-2"
-                onClick={() => selectNote(note.id)}
-              >
-                {getTitle(note.content)}
-              </li>
-            ))}
+        <ul className={`ml-4 ${expandedCategories[category] ? "" : "hidden"}`}>
+          {categoryNotes.map((note) => renderNoteItem(note))}
           {category === "trash" && (
             <li>
               <button
@@ -155,9 +168,9 @@ const CategoriesSidebar: React.FC<CategoriesSidebarProps> = ({
             </li>
           )}
         </ul>
-      )}
-    </li>
-  );
+      </li>
+    );
+  };
 
   return (
     <div
@@ -188,10 +201,10 @@ const CategoriesSidebar: React.FC<CategoriesSidebarProps> = ({
             <ul>
               {renderCategory("all", "📝")}
               {renderCategory("favorites", "⭐")}
-              {renderCategory("trash", "🗑️")}
               {customCategories.map((category) =>
                 renderCategory(category, "📁")
               )}
+              {renderCategory("trash", "🗑️")}
             </ul>
           </nav>
         </div>

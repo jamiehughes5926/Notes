@@ -62,7 +62,6 @@ const Home: React.FC = () => {
         };
         setNotes([defaultNote]);
       }
-      setIsLoaded(true);
     };
 
     const loadCustomCategories = () => {
@@ -74,6 +73,7 @@ const Home: React.FC = () => {
 
     loadNotes();
     loadCustomCategories();
+    setIsLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -83,8 +83,13 @@ const Home: React.FC = () => {
   }, [notes, isLoaded]);
 
   useEffect(() => {
-    localStorage.setItem("customCategories", JSON.stringify(customCategories));
-  }, [customCategories]);
+    if (isLoaded) {
+      localStorage.setItem(
+        "customCategories",
+        JSON.stringify(customCategories)
+      );
+    }
+  }, [customCategories, isLoaded]);
 
   const addNewNote = (category?: string) => {
     const newNote: Note = {
@@ -136,7 +141,9 @@ const Home: React.FC = () => {
   };
 
   const handleAddCategory = (name: string) => {
-    setCustomCategories((prevCategories) => [...prevCategories, name]);
+    if (!customCategories.includes(name)) {
+      setCustomCategories((prevCategories) => [...prevCategories, name]);
+    }
   };
 
   const clearTrash = () => {
